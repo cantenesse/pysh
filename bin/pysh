@@ -1,0 +1,107 @@
+#!/usr/bin/env python
+
+import cmd
+import sys
+import os
+from itertools import izip
+
+# third party libraries
+sys.path.append('/usr/share/c5i/cli/modules')
+import yaml
+
+
+class C5i(cmd.Cmd):
+	'''
+	The methods in this class handle the commands typed into the command line
+	interface.  All methods are names 'do_<cli command>()'.  If there is a 
+	command class 'start', there is a mehtod called 'do_start()'.  
+
+	These methods handle accepting command line arguments and then do one
+	of two things: call functions from the c5i library or execute scripts 
+	written by the c5i team.     
+	'''
+	intro = "This is the c5i shell.  Type ? of help for a list of commands.\n"
+	prompt = 'c5i> '
+
+	f = open('/usr/share/c5i/cli/conf/c5i.conf')
+	config_str = f.read()
+	f.close()
+
+	config = yaml.load(config_str)
+
+	def do_set(self, args):
+		try:
+			action = args.split()[0]
+		except IndexError:
+			print "Usage: set <command> (type help or ? for list of commands)"
+			return
+		try:	
+			script = self.config[action]['script']
+		except KeyError:
+			print "Error: script not found"
+			return
+		
+		try:
+			script_dir = self.config[action]['script_dir']
+		except KeyError:
+			script_dir = self.config['script_dir']
+
+		os.system("%s/%s %s" % (script_dir, script, args))
+
+	def do_get(self, args):
+		try:
+			action = args.split()[0]
+		except IndexError:
+			print "Usage: get <command> (type help or ? for list of commands)"
+			return
+		try:	
+			script = self.config[action]['script']
+		except KeyError:
+			print "Error: script not found"
+			return
+		
+		try:
+			script_dir = self.config[action]['script_dir']
+		except KeyError:
+			script_dir = self.config['script_dir']
+
+		os.system("%s/%s %s" % (script_dir, script, args))
+
+	def do_help(self, args):
+		documented_commands = ''
+		undocumented_commands = ''
+		help_line = ''
+
+		for key in self.config:
+			try:
+				help_line += self.config[key]['help']
+				documented_commands += "'%s %s' " % (self.config[key]['type'],
+													 key)
+			except TypeError:
+				undocumented_commands += key
+
+		if args is '':
+			print "Documented commands (type help <topic>):"
+			print "========================================"
+			print "%s " % (documented_commands)
+		else:
+			try:
+				command_type = args.split()[0]
+				command = args.split()[1]
+			except IndexError:
+				print "Usage: help <get/set> <command>"
+				return
+
+			try:
+				print "%s %s: %s" % (command_type, 
+									 command, 
+									 self.config[command]['help'])
+			except KeyError:
+				print "%s %s: not valid" % (command_type, command)
+
+	def do_exit(self, args):
+		'Exits the shell'
+		return True
+
+if __name__ == '__main__':
+	C5i().cmdloop()	
